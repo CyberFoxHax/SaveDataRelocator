@@ -23,6 +23,7 @@ search each of theses folders and check for any folder named either the game nam
 
 ### Command line arguments:
 [0] = Executebale to run
+
 [1..] = Remote location to manage data (you can input many parameters)
 
 #### Why?
