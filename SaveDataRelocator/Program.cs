@@ -16,6 +16,37 @@ namespace SaveDataRelocator {
 			}
 		}
 
+		public static string Instructions =
+@" -- SaveDataRelocator -- 
+Copy data from local to remote location and then starts and application.
+When the application shuts down the data will be copied back to local.
+
+
+Usage:
+	Place SaveDataRelocator.exe next to the game you are running.
+	This is crucial since this folder will implicitly be the ""Local"" folder.
+
+	drag and drop the game exe onto SaveDataRelocator.exe and you will be
+	asked to pick a directory. Find the games save data directory.
+
+	a new shortcut will be created for you, which
+	you can copy to your desktop.
+
+
+Try searching theese folders:
+	AppData/Roaming
+	AppData/Local
+	AppData/LocalLow
+	Documents/
+	Documents/My Games
+
+
+Command line arguments:
+
+	[0] = Executebale to run
+	[1...] = Remote location to manage data (you can input many parameters)
+";
+
 		[STAThread]
 		private static void Main(string[] args){
 			if (args.Length == 1){
@@ -26,7 +57,7 @@ namespace SaveDataRelocator {
 				return;
 			}
 			if (args.Length < 2){
-				Console.WriteLine("needs atleast 2 parameters");
+				Console.WriteLine(Instructions);
 				Console.ReadLine();
 				return;
 			}
@@ -59,8 +90,16 @@ namespace SaveDataRelocator {
 			}
 
 			Console.WriteLine("\n\nStarting process");
-			var proccess = Process.Start(startExe);
-			proccess.WaitForExit();
+			var process = new Process {
+				StartInfo = {
+					FileName = startExe,
+					WorkingDirectory = LocalDirectory,
+					Domain = LocalDirectory,
+					UseShellExecute = true
+				}
+			};
+			process.Start();
+			process.WaitForExit();
 			Console.WriteLine("Proccess exited\nCopying to local directory\n\n");
 
 			for (var i = 1; i < args.Length; i ++) {
@@ -75,12 +114,6 @@ namespace SaveDataRelocator {
 		}
 
 		private static void CreateShortcut(string exePath) {
-			var shell = new WshShell();
-			var fullShortcutPath = Path.GetFileName(exePath);
-			var shortcut = (IWshShortcut)shell.CreateShortcut(exePath + ".lnk");
-			shortcut.IconLocation = Path.GetFullPath(exePath);
-			shortcut.Description = "New shortcut for " + fullShortcutPath;
-
 			var dialog = new CommonOpenFileDialog{
 				InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
 				Multiselect = false,
@@ -88,15 +121,26 @@ namespace SaveDataRelocator {
 				Title = "Pick a folder",
 			};
 			var specialFolderPath = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\..");
+			var documentsPath = Path.Combine(Environment.ExpandEnvironmentVariables("%userprofile%"), "Documents");
 			dialog.AddPlace(LocalDirectory, FileDialogAddPlaceLocation.Top);
 			dialog.AddPlace(specialFolderPath, FileDialogAddPlaceLocation.Top);
+			dialog.AddPlace(Path.Combine(specialFolderPath, "Roaming"), FileDialogAddPlaceLocation.Top);
 			dialog.AddPlace(Path.Combine(specialFolderPath, "Local"), FileDialogAddPlaceLocation.Top);
 			dialog.AddPlace(Path.Combine(specialFolderPath, "LocalLow"), FileDialogAddPlaceLocation.Top);
-			var dialogFileName = dialog.ShowDialog() == CommonFileDialogResult.Ok ? dialog.FileName : "";
+			dialog.AddPlace(documentsPath, FileDialogAddPlaceLocation.Top);
+			dialog.AddPlace(Path.Combine(documentsPath, "My Games"), FileDialogAddPlaceLocation.Top);
+			string dialogFileName;
+			if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
+				dialogFileName = dialog.FileName;
+			else return;
 
+			var shell = new WshShell();
+			var fullShortcutPath = Path.GetFileName(exePath);
+			var shortcut = (IWshShortcut)shell.CreateShortcut(Path.GetFileNameWithoutExtension(exePath) + ".lnk");
+			shortcut.IconLocation = Path.GetFullPath(exePath);
+			shortcut.Description = "New shortcut for " + fullShortcutPath;
 			shortcut.TargetPath = Assembly.GetExecutingAssembly().Location;
 			shortcut.Arguments = string.Format("\"{0}\" \"{1}\" ", Path.GetFileName(exePath), dialogFileName.Replace(specialFolderPath, "%appdata%\\.."));
-
 			shortcut.Save();
 		}
 
