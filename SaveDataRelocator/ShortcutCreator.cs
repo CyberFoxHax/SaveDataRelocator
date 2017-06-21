@@ -30,6 +30,8 @@ namespace SaveDataRelocator {
 			addPlace(Path.Combine(specialFolderPath, "LocalLow"));
 			addPlace(documentsPath);
 			addPlace(Path.Combine(documentsPath, "My Games"));
+			addPlace(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+			addPlace(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games"));
 			addPlace(Path.Combine(userProfilePath, "Saved Games"));
 
 			string dialogFileName;
